@@ -1,0 +1,20 @@
+# 日志与临时文件
+*.log
+*.tmp
+*.bak
+*.bak-*
+psscriptanalyzer-report.*
+
+# 系统文件
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# 构建产物
+/out/
+/dist/
+*.zip
+
+# 本地配置
+.vscode/settings.json
+local.settings.ps1

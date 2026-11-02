@@ -1,0 +1,60 @@
+name: validate
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  powershell-syntax:
+    name: PowerShell 语法校验
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 解析 fix-activation.ps1
+        shell: pwsh
+        run: |
+          $path = Join-Path $PWD 'fix-activation.ps1'
+          if (-not (Test-Path $path)) {
+            Write-Host '::error::找不到 fix-activation.ps1'
+            exit 1
+          }
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$null, [ref]$errors)
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object {
+              Write-Host ("::error file=fix-activation.ps1,line={0}::{1}" -f $_.Extent.StartLineNumber, $_.Message)
+            }
+            exit 1
+          }
+          Write-Host '语法校验通过'
+          Write-Host ("行数: " + (Get-Content $path).Count)
+
+      - name: 检查文件编码（PS 5.1 需要 UTF-8 BOM）
+        shell: pwsh
+        run: |
+          $path = Join-Path $PWD 'fix-activation.ps1'
+          $bytes = [System.IO.File]::ReadAllBytes($path)
+          $hasBom = ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF)
+          if (-not $hasBom) {
+            Write-Host '::error::fix-activation.ps1 缺少 UTF-8 BOM，PowerShell 5.1 读取中文会乱码'
+            exit 1
+          }
+          Write-Host 'UTF-8 BOM 正常'
+
+      - name: 检查是否含有激活绕过关键字
+        shell: pwsh
+        run: |
+          $path = Join-Path $PWD 'fix-activation.ps1'
+          $bad = @('KMS_VL_ALL', 'HEU_KMS', 'AutoKMS', 'gvlk.*?install', 'slmgr /ipk')
+          $hit = $false
+          foreach ($p in $bad) {
+            if (Select-String -Path $path -Pattern $p -Quiet) {
+              Write-Host ("::error::发现可疑激活相关关键字: " + $p)
+              $hit = $true
+            }
+          }
+          if ($hit) { exit 1 }
+          Write-Host '未发现激活绕过代码'
