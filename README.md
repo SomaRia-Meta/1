@@ -58,7 +58,7 @@
 
 ```powershell
 # 1. 下载或克隆本仓库
-git clone https://github.com/<your-name>/windows-activation-repair.git
+git clone https://github.com/SomaRia-Meta/1.git
 
 # 2. 双击 run-fix.bat（会自动请求管理员权限）
 #    或在管理员 PowerShell 中：
